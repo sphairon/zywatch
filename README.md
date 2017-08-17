@@ -2,12 +2,16 @@
 Zywatch is a bash script used for Friendly User Test (FUT) field monitoring of Zyxel CPEs.
 
 # usage
+```
 cd /usr/local/source/
 git clone https://github.com/sphairon/zywatch.git
 cd zywatch
 ./zywatch.sh setup
 editor /etc/zy.conf
-update at least:
+```
+
+update at least the following config parameters within /etc/zy.conf:
+
 * DUTUSER
 * DUTPASS
 * DYNDNS1
