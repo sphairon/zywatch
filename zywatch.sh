@@ -61,6 +61,7 @@ doReadConfig()
   V6=0
   [ ! -z $(cat /etc/modules |grep ipv6) ] && V6=1
   HOSTNAME=$(cat /etc/hostname)
+  [ -z $LANIF ] && LANIF="eth0"
 }
 
 # cleanup function
@@ -291,7 +292,7 @@ doIPv4()
     doSend "${MON_IPV4WANIP}" 2 "Failed to get WAN IPv4"
   fi
 
-  local lan=$(ip addr |grep inet |grep eth0 |awk '{print $2}')
+  local lan=$(ip addr |grep inet |grep ${LANIF} |awk '{print $2}')
   if [ "${lan}" != "" ];then
     doOut 0 "LAN IPv4: ${lan}"
     doSend "${MON_IPV4LANIP}" 0 "LAN IP is ${lan}"

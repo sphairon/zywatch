@@ -30,5 +30,5 @@ DSL CPE status to a monitoring server
 * DUT GUI is accessible and responds within a given time
 * SIP accounts are registered
 * Software version of DUT is up-to-date
-* overall system satus is of DUT is OK (no failed services
+* overall system satus of DUT is OK (no failed services)
 * check script version is up-to-date
