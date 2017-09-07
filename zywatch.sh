@@ -44,6 +44,8 @@
 # afterwards the script will run once every 10 minutes and report          #
 # DSL CPE status to a monitoring server                                    #
 #                                                                          #
+# All the used variables are defined in zy.conf                            #
+#                                                                          #
 ############################################################################
 
 CURRENTVERSION=3.0
@@ -138,14 +140,14 @@ doLogin()
   # logout
   curl -b ${cookie} -s -i -d "tid=&sid=${sessionid}&controller=SasLogin&action=logout" http://${DEFAULT}/webng.cgi > /dev/null
   if [ ${logintime} -gt 30 ];then
-      doSend "${MON_GUIACCESS}" 2 "CRITICAL: GUI response in ${sum} seconds |timer=${sum};10;30;0;120"
+      doSend "${MON_GUIACCESS}" 2 "CRITICAL: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
       return
   fi
   if [ ${logintime} -gt 20 ];then
-      doSend "${MON_GUIACCESS}" 1 "WARNING: GUI response in ${sum} seconds |timer=${sum};10;30;0;120"
+      doSend "${MON_GUIACCESS}" 1 "WARNING: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
       return
   fi
-  doSend "${MON_GUIACCESS}" 0 "OK: GUI response in ${sum} seconds |timer=${sum};10;30;0;120"
+  doSend "${MON_GUIACCESS}" 0 "OK: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
 }
 
 # helper function to make a outgoing analogue call
