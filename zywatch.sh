@@ -112,7 +112,7 @@ doSetup()
 
   # prepare cronjob
   echo "@reboot root ${ZYPATH}/${SCRIPTNAME} > /dev/null" > ${cronjob}
-  echo "*/10 * * * * root ${ZYPATH}/zywatch-wrapper.sh ${ZYPATH}/${SCRIPTNAME} ${CONFIGFILE}" >> ${cronjob}
+  echo "*/10 * * * * root ${ZYPATH}/zywatch-wrapper.sh ${ZYPATH}/${SCRIPTNAME} ${CONFIGFILE} > /dev/null 2>&1" >> ${cronjob}
 
   # place config file
   [ ! -f ${CONFIGFILE} ] && cp ./zy.conf ${CONFIGFILE}
