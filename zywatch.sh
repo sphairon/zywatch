@@ -382,7 +382,6 @@ if [ -f ${LOCKFILE} ];then
 else
   touch ${LOCKFILE}
 fi
-rm ${LOGFILE} 2> /dev/null
 
 # first setup
 if [ "${1}" = "setup" ]; then
@@ -391,6 +390,8 @@ if [ "${1}" = "setup" ]; then
 fi
 
 doReadConfig
+
+rm ${LOGFILE} 2> /dev/null
 
 # find the DUT
 DEFAULT=$(ip route |grep default |grep default |awk '{print $3}')
