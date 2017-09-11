@@ -55,6 +55,7 @@ LOCKFILE="/var/lock/$(basename ${0}).lock"
 DEPENDENCIES="nsca-client dnsutils curl ppp git"
 IP="0.0.0.0"
 IP6="::0"
+GUIACCESS=0
 
 # helper function to read configuration
 doReadConfig()
@@ -136,6 +137,16 @@ doLogin()
   LOGIN=$(curl -b ${cookie} -s -i -d "tid=&sid=${sessionid}&controller=SasLogin&action=login&id=0&LoginName=${DUTUSER}&LoginPass=${DUTPASS}" http://${DEFAULT}/webng.cgi)
   local fin=$(date +%s)
   local logintime=$((${fin} - ${start}))
+
+  local login_ok=$(echo "${LOGIN}"|grep SYSTEM |cut -d \> -f 6 |cut -d \< -f 1)
+  if [ -z ${login_ok} ];then
+    doOut 1 "GUI login FAILED with username ${DUTUSER}"
+    doSend "${MON_GUIACCESS}" 2 "GUI login FAILED with username ${DUTUSER}"
+    GUIACCESS=0
+    return
+  else
+    GUIACCESS=1
+  fi
 
   # logout
   curl -b ${cookie} -s -i -d "tid=&sid=${sessionid}&controller=SasLogin&action=logout" http://${DEFAULT}/webng.cgi > /dev/null
@@ -356,18 +367,12 @@ doSystem()
   local systemstatus=$(echo "${LOGIN}"|grep cStatusOk |grep System)
   local software=$(echo "${LOGIN}"|grep SW |grep -i version | awk '{print $15}' |cut -d \" -f 2)
   doSend "${MON_SWVER}" 0 "${software}"
-  local login_ok=$(echo "${LOGIN}"|grep SYSTEM |cut -d \> -f 6 |cut -d \< -f 1)
-  if [ -z ${login_ok} ];then
-    doOut 1 "GUI login FAILED"
-    doSend "${MON_SYSSTAT}" 2 "GUI login FAILED"
+  if [ "$systemstatus" = "" ];then
+    doOut 1 "System Status is FAILED"
+    doSend "${MON_SYSSTAT}" 2 "Some failed services"
   else
-    if [ "$systemstatus" = "" ];then
-      doOut 1 "System Status is FAILED"
-      doSend "${MON_SYSSTAT}" 2 "Some failed services"
-    else
-      doOut 0 "System Status is OK"
-      doSend "${MON_SYSSTAT}" 0 "No failed services"
-    fi
+    doOut 0 "System Status is OK"
+    doSend "${MON_SYSSTAT}" 0 "No failed services"
   fi
 }
 
@@ -407,8 +412,8 @@ doDNS
 doTestV6
 doIPv4
 doLogin
-doSystem
-doVoIP
+[ $GUIACCESS -eq 1 ] && doSystem
+[ $GUIACCESS -eq 1 ] && doVoIP
 doDynDNS
 doTelephony
 doExit
