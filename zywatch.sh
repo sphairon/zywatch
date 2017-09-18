@@ -61,8 +61,7 @@ GUIACCESS=0
 doReadConfig()
 {
   . ${CONFIGFILE}
-  V6=0
-  [ ! -z $(cat /etc/modules |grep ipv6) ] && V6=1
+  [ -z $V6 ] && V6=1
   HOSTNAME=$(cat /etc/hostname)
   [ -z $LANIF ] && LANIF="eth0"
 }
