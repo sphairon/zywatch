@@ -89,7 +89,8 @@ doOut()
       echo "${@}"
     fi
   fi
-  echo ${@} >> ${LOGFILE}
+  local time=$(date +%b" "%d" "%R)
+  echo "${time} ${@}" >> ${LOGFILE}
 }
 
 # send test result to monitoring server
