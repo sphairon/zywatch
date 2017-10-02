@@ -65,6 +65,7 @@ doReadConfig()
   HOSTNAME=$MONITORINGHOST
   [ -z $LANIF ] && LANIF="eth0"
   [ -z $HOSTNAME ] && HOSTNAME=$(cat /etc/hostname)
+  [ -z $KEEPLOG ] && KEEPLOG=0
 }
 
 # cleanup function
@@ -391,7 +392,7 @@ fi
 
 doReadConfig
 
-rm ${LOGFILE} 2> /dev/null
+[ $KEEPLOG -eq 0 ] && rm ${LOGFILE} 2> /dev/null
 
 # find the DUT
 DEFAULT=$(ip route |grep default |grep default |awk '{print $3}')
