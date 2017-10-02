@@ -407,7 +407,7 @@ echo -ne "\033[9;0]" > /dev/console
 echo -e \\033c > /dev/console
 
 # report check script version
-doSend "${MON_MONVER}" 0 "${CURRENTVERSION}"
+doSend "${MON_MONVER}" 0 "${CURRENTVERSION}-${GITBRANCH}"
 
 # start testing the DUT
 doDNS
