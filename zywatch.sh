@@ -62,8 +62,10 @@ doReadConfig()
 {
   . ${CONFIGFILE}
   [ -z $V6 ] && V6=1
-  HOSTNAME=$(cat /etc/hostname)
+  HOSTNAME=$MONITORINGHOST
   [ -z $LANIF ] && LANIF="eth0"
+  [ -z $HOSTNAME ] && HOSTNAME=$(cat /etc/hostname)
+  [ -z $KEEPLOG ] && KEEPLOG=0
 }
 
 # cleanup function
@@ -390,7 +392,7 @@ fi
 
 doReadConfig
 
-rm ${LOGFILE} 2> /dev/null
+[ $KEEPLOG -eq 0 ] && rm ${LOGFILE} 2> /dev/null
 
 # find the DUT
 DEFAULT=$(ip route |grep default |grep default |awk '{print $3}')
@@ -405,7 +407,7 @@ echo -ne "\033[9;0]" > /dev/console
 echo -e \\033c > /dev/console
 
 # report check script version
-doSend "${MON_MONVER}" 0 "${CURRENTVERSION}"
+doSend "${MON_MONVER}" 0 "${CURRENTVERSION}-${GITBRANCH}"
 
 # start testing the DUT
 doDNS
