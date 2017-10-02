@@ -62,8 +62,9 @@ doReadConfig()
 {
   . ${CONFIGFILE}
   [ -z $V6 ] && V6=1
-  HOSTNAME=$(cat /etc/hostname)
+  HOSTNAME=$MONITORINGHOST
   [ -z $LANIF ] && LANIF="eth0"
+  [ -z $HOSTNAME ] && HOSTNAME=$(cat /etc/hostname)
 }
 
 # cleanup function
