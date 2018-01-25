@@ -63,7 +63,7 @@ doReadConfig()
   . ${CONFIGFILE}
   [ -z $V6 ] && V6=1
   HOSTNAME=$MONITORINGHOST
-  [ -z $LANIF ] && LANIF="eth0"
+  [ -z $LANIF ] && LANIF=$(ip route |grep default |grep default |awk '{print $5}')
   [ -z $HOSTNAME ] && HOSTNAME=$(cat /etc/hostname)
   [ -z $KEEPLOG ] && KEEPLOG=0
 }
@@ -401,7 +401,6 @@ if [ ! -z ${DUTIP} ];then
   DEFAULT=${DUTIP}
 fi
 
-LANIF=$(ip route |grep default |grep default |awk '{print $5}')
 if [ -z "${DEFAULT}" ];then
   echo " can't find DUT"
   doExit
