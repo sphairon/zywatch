@@ -397,6 +397,10 @@ doReadConfig
 
 # find the DUT
 DEFAULT=$(ip route |grep default |grep default |awk '{print $3}')
+if [ ! -z ${DUTIP} ];then
+  DEFAULT=${DUTIP}
+fi
+
 LANIF=$(ip route |grep default |grep default |awk '{print $5}')
 if [ -z "${DEFAULT}" ];then
   echo " can't find DUT"
