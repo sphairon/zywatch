@@ -353,10 +353,10 @@ doVoIP()
   if [ ${USEVOIP} -eq 0 ];then
     doSend "${MON_SIPACC}" 0 "No SIP Accounts used"
   fi
-  local telstatus=$(echo "${LOGIN}"|grep icon_phone_ok |cut -d , -f 2)
-  if [ ${telstatus} -eq 1 ];then
+  local telstatus=$(echo "${LOGIN}"|egrep '(Registriert|Registered)'|wc -l)
+  if [ ${telstatus} -gt 0 ];then
     doOut 0 "Telephony Status is OK"
-    doSend "${MON_SIPACC}" 0 "SIP Accounts are registered"
+    doSend "${MON_SIPACC}" 0 "SIP Accounts are registered|accounts=${telstatus};1;10;0;10"
   else
     doOut 1 "Telephony Status is FAILED"
     doSend "${MON_SIPACC}" 2 "SIP Accounts are NOT registered"
@@ -367,7 +367,7 @@ doVoIP()
 doSystem()
 {
   local systemstatus=$(echo "${LOGIN}"|grep cStatusOk |grep System)
-  local software=$(echo "${LOGIN}"|grep SW |grep -i version | awk '{print $15}' |cut -d \" -f 2)
+  local software=$(echo "${LOGIN}"|grep device_version |cut -d : -f 2 |cut -d \< -f 1)
   doSend "${MON_SWVER}" 0 "${software}"
   if [ "$systemstatus" = "" ];then
     doOut 1 "System Status is FAILED"
