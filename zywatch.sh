@@ -367,7 +367,7 @@ doVoIP()
 doSystem()
 {
   local systemstatus=$(echo "${LOGIN}"|grep cStatusOk |grep System)
-  local software=$(echo "${LOGIN}"|grep SW |grep -i version | awk '{print $15}' |cut -d \" -f 2)
+  local software=$(echo "${LOGIN}"|grep device_version |cut -d : -f 2 |cut -d \< -f 1)
   doSend "${MON_SWVER}" 0 "${software}"
   if [ "$systemstatus" = "" ];then
     doOut 1 "System Status is FAILED"
