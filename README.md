@@ -29,6 +29,7 @@ DSL CPE status to a monitoring server
 * up to two DynDNS domains are up to date
 * DUT GUI is accessible and responds within a given time
 * SIP accounts are registered
+* check detected area and data rate (downstream/upstream)
 * Software version of DUT is up-to-date
-* overall system satus of DUT is OK (no failed services)
+* overall system status of DUT is OK (no failed services)
 * check script version is up-to-date
