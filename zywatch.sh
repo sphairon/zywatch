@@ -363,12 +363,68 @@ doVoIP()
   fi
 }
 
+# check data rates
+checkArea() {
+    # get area information
+    local area=""
+
+    area=$(echo $LOGIN | grep -Po '((Anschluss|Area):<\/label>)[\ ]*\K[^<]*')
+    doSend "${MON_AREA}" 0 "${area}"
+}
+
+checkDataRates() {
+    local downstream=0
+    local upstream=0
+
+    # get downstream/upstream rate
+    downstream=$(echo "${LOGIN}" | grep -A1 '[dD]ownstream' | grep -Po '(<div>)\K[^<]*')
+    upstream=$(echo "${LOGIN}" | grep -A1 '[uU]pstream' | grep -Po '(<div>)\K[^<]*')
+
+    # downstream
+    downstream=${downstream//&\#160;/ }
+    downstream_value=$(echo "${downstream}" | awk '{print $1}')
+
+    if [ ! -z "${DATARATE_DOWNSTREAM}" -o ! -z "${DATARATE_UPSTREAM}" ]; then
+        DATARATE_DOWNSTREAM=100000
+    fi
+    max_datarate_downstream=$((DATARATE_DOWNSTREAM + (DATARATE_DOWNSTREAM * 10 / 100) ))
+    warning_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 50 / 100) ))
+    critical_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 75 / 100) ))
+    min_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 90 / 100) ))
+    graph_downstream_values="${warning_datarate_downstream};${critical_datarate_downstream};${min_datarate_downstream};${max_datarate_downstream}"
+
+    # upstream
+    upstream=${upstream//&\#160;/ }
+    upstream_value=$(echo "${upstream}" | awk '{print $1}')
+
+    if [ ! -z "${DATARATE_UPSTREAM}" ]; then
+        DATARATE_UPSTREAM=100000
+    fi
+    max_datarate_upstream=$((DATARATE_UPSTREAM + (DATARATE_UPSTREAM * 10 / 100) ))
+    warning_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 50 / 100) ))
+    critical_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 75 / 100) ))
+    min_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 90 / 100) ))
+    graph_upstream_values="${warning_datarate_upstream};${critical_datarate_upstream};${min_datarate_upstream};${max_datarate_upstream}"
+
+    # result
+    if [ "${downstream_value}" -lt "${critical_datarate_downstream}" -o "${upstream_value}" -lt "${critical_datarate_upstream}" ]; then
+        result=2
+    elif [ "${downstream_value}" -lt "${warning_datarate_downstream}" -o "${upstream_value}" -lt "${warning_datarate_upstream}" ]; then
+        result=1
+    else
+        result=0
+    fi
+
+    doSend "${MON_DATARATE}" ${result} "${downstream} (ds) / ${upstream} (us) | downstream=${downstream_value};${graph_downstream_values}; upstream=${upstream_value};${graph_upstream_values};"
+}
+
 # check Software version and if overall system status is OK
 doSystem()
 {
   local systemstatus=$(echo "${LOGIN}"|grep cStatusOk |grep System)
   local software=$(echo "${LOGIN}"|grep device_version |cut -d : -f 2 |cut -d \< -f 1)
   doSend "${MON_SWVER}" 0 "${software}"
+
   if [ "$systemstatus" = "" ];then
     doOut 1 "System Status is FAILED"
     doSend "${MON_SYSSTAT}" 2 "Some failed services"
@@ -419,6 +475,8 @@ doTestV6
 doIPv4
 doLogin
 [ $GUIACCESS -eq 1 ] && doSystem
+[ "${GUIACCESS}" -eq 1 ] && checkArea
+[ "${GUIACCESS}" -eq 1 ] && checkDataRates
 [ $GUIACCESS -eq 1 ] && doVoIP
 doDynDNS
 doTelephony
