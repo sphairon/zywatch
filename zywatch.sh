@@ -338,9 +338,30 @@ doIPv4()
         doOut 1 "Failed to get LAN IPv4"
         doSend "${MON_IPV4LANIP}" 2 "Failed to get LAN IP"
     fi
-  else
-    doSend "${MON_DYNDNS2}" 0 "No Account configured"
-  fi
+}
+
+# check DynDNS accounts
+doDynDNS()
+{
+    local dyndns_ip=""
+
+    for i in 1 2; do
+        DYNDNS_CONFIG="DYNDNS${i}"
+        DYNDNS_MONITORING="MON_DYNDNS${i}"
+
+        if [ ! -z "${!DYNDNS_CONFIG}" ]; then
+            dyndns_ip=$(nslookup "${!DYNDNS_CONFIG}" | grep "Address" |awk 'NR==2{print $2}')
+            if [ "${dyndns_ip}" = "${IP}" ]; then
+                doOut 0 "DynDNS Account ${i} works as expected"
+                doSend "${!DYNDNS_MONITORING}" 0 "${dyndns_ip} matches ${!DYNDNS_CONFIG}"
+            else
+                doOut 1 "DynDNS Account ${i} FAILED"
+                doSend "${!DYNDNS_MONITORING}" 2 "${dyndns_ip} does not matches ${!DYNDNS_CONFIG} (${IP})"
+            fi
+        else
+            doSend "${!DYNDNS_MONITORING}" 0 "No Account configured"
+        fi
+    done
 }
 
 # check if SIP accounts are registered
@@ -436,8 +457,17 @@ doSystem()
 }
 
 # script already running?
-if [ -f ${LOCKFILE} ];then
-  exit
+if [ -f "${LOCKFILE}" ]; then
+    file_modification_date="$(stat "${LOCKFILE}" | grep "Modif" | awk '{print $2}') $(stat "${LOCKFILE}" | grep "Modif" | awk '{print $3}')"
+    if [ ${#file_modification_date} -gt 0 ]; then
+        modification_date=$(date -d "${file_modification_date}" +%s)
+        current_date=$(($(date +%s) - 3600))
+        if [ "${modification_date}" -lt "${current_date}" ]; then
+            echo "WARNING: lock file is older than 1 hour - maybe file was not removed correctly"
+            rm -f "${LOCKFILE}"
+        fi
+    fi
+    exit 0
 else
     touch "${LOCKFILE}"
 fi
