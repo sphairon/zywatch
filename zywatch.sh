@@ -382,16 +382,20 @@ doVoIP()
     fi
 }
 
-# check data rates
-checkArea() {
+# check detected area
+checkArea()
+{
     # get area information
     local area=""
 
-    area=$(echo $LOGIN | grep -Po '((Anschluss|Area):<\/label>)[\ ]*\K[^<]*')
+    area=$(echo "${LOGIN}" | egrep -A1 '(Anschluss|Area):<\/label>' | tail -1 | cut -d'<' -f1)
+    doOut 0 "Area: ${area}"
     doSend "${MON_AREA}" 0 "${area}"
 }
 
-checkDataRates() {
+# check data rates
+checkDataRates()
+{
     local downstream=0
     local upstream=0
 
@@ -403,26 +407,37 @@ checkDataRates() {
     downstream=${downstream//&\#160;/ }
     downstream_value=$(echo "${downstream}" | awk '{print $1}')
 
-    if [ ! -z "${DATARATE_DOWNSTREAM}" -o ! -z "${DATARATE_UPSTREAM}" ]; then
-        DATARATE_DOWNSTREAM=100000
+    if [ -z "${DATARATE_DOWNSTREAM}" ]; then
+        # set fix values to prevent wrong warning messages in monitoring
+        max_datarate_downstream=100000
+        warning_datarate_downstream=0
+        critical_datarate_downstream=0
+        min_datarate_downstream=0
+    else
+        max_datarate_downstream=$((DATARATE_DOWNSTREAM + (DATARATE_DOWNSTREAM * 10 / 100) ))
+        warning_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 50 / 100) ))
+        critical_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 75 / 100) ))
+        min_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 90 / 100) ))
     fi
-    max_datarate_downstream=$((DATARATE_DOWNSTREAM + (DATARATE_DOWNSTREAM * 10 / 100) ))
-    warning_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 50 / 100) ))
-    critical_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 75 / 100) ))
-    min_datarate_downstream=$((DATARATE_DOWNSTREAM - (DATARATE_DOWNSTREAM * 90 / 100) ))
+
     graph_downstream_values="${warning_datarate_downstream};${critical_datarate_downstream};${min_datarate_downstream};${max_datarate_downstream}"
 
     # upstream
     upstream=${upstream//&\#160;/ }
     upstream_value=$(echo "${upstream}" | awk '{print $1}')
 
-    if [ ! -z "${DATARATE_UPSTREAM}" ]; then
-        DATARATE_UPSTREAM=100000
+    if [ -z "${DATARATE_UPSTREAM}" ]; then
+        # set fix values to prevent wrong warning messages in monitoring
+        max_datarate_upstream=100000
+        warning_datarate_upstream=0
+        critical_datarate_upstream=0
+        min_datarate_upstream=0
+    else
+        max_datarate_upstream=$((DATARATE_UPSTREAM + (DATARATE_UPSTREAM * 10 / 100) ))
+        warning_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 50 / 100) ))
+        critical_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 75 / 100) ))
+        min_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 90 / 100) ))
     fi
-    max_datarate_upstream=$((DATARATE_UPSTREAM + (DATARATE_UPSTREAM * 10 / 100) ))
-    warning_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 50 / 100) ))
-    critical_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 75 / 100) ))
-    min_datarate_upstream=$((DATARATE_UPSTREAM - (DATARATE_UPSTREAM * 90 / 100) ))
     graph_upstream_values="${warning_datarate_upstream};${critical_datarate_upstream};${min_datarate_upstream};${max_datarate_upstream}"
 
     # result
@@ -433,6 +448,9 @@ checkDataRates() {
     else
         result=0
     fi
+
+    doOut ${result} "downstream=${downstream_value};${graph_downstream_values}"
+    doOut ${result} "upstream=${upstream_value};${graph_upstream_values}"
 
     doSend "${MON_DATARATE}" ${result} "${downstream} (ds) / ${upstream} (us) | downstream=${downstream_value};${graph_downstream_values}; upstream=${upstream_value};${graph_upstream_values};"
 }
