@@ -48,7 +48,7 @@
 #                                                                          #
 ############################################################################
 
-CURRENTVERSION=3.0
+CURRENTVERSION=3.1
 
 # get parameters
 SCRIPTNAME="${0}"
