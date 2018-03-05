@@ -106,9 +106,11 @@ doOut()
 # send test result to monitoring server
 doSend()
 {
-  echo "password=${MONITORINGPASSWD}" > /etc/send_nsca.cfg
-  echo "encryption_method=3" >> /etc/send_nsca.cfg
-  echo "${HOSTNAME},${1},${2},${3}"| /usr/sbin/send_nsca -H ${MONITORINGTARGET} -p 5667 -d , -c /etc/send_nsca.cfg > /dev/null 2>&1
+    if [ ! -z "${1}" ]; then
+        echo "password=${MONITORINGPASSWD}" > /etc/send_nsca.cfg
+        echo "encryption_method=3" >> /etc/send_nsca.cfg
+        echo "${HOSTNAME},${1},${2},${3}"| /usr/sbin/send_nsca -H "${MONITORINGTARGET}" -p 5667 -d , -c /etc/send_nsca.cfg > /dev/null 2>&1
+    fi
 }
 
 # helper function to setup environment after the git clone
