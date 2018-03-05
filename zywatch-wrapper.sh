@@ -9,4 +9,4 @@ if [ ${UPDATE} -eq 1 ];then
   git checkout -f ${GITBRANCH}
   git pull
 fi
-${1} 2> /dev/null
+${1} ${2} 2> /dev/null
