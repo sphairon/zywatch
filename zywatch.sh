@@ -49,9 +49,17 @@
 ############################################################################
 
 CURRENTVERSION=3.0
-CONFIGFILE="/etc/zy.conf"
-SCRIPTNAME=$0
-LOCKFILE="/var/lock/$(basename ${0}).lock"
+
+# get parameters
+SCRIPTNAME="${0}"
+if [ ! -z "${1}" ]; then
+    CONFIGFILE="${1}"
+else
+    CONFIGFILE="/etc/zy.conf"
+fi
+
+LOGFILE="/var/log/$(basename "${0}").log"
+LOCKFILE="/var/lock/$(basename "${0}").lock"
 DEPENDENCIES="nsca-client dnsutils curl ppp git"
 IP="0.0.0.0"
 IP6="::0"
