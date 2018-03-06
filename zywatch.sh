@@ -52,12 +52,8 @@ CURRENTVERSION=3.1
 
 # get parameters
 SCRIPTNAME="${0}"
-if [ ! -z "${1}" ]; then
-    CONFIGFILE="${1}"
-else
-    CONFIGFILE="/etc/zy.conf"
-fi
 
+CONFIGFILE="/etc/zy.conf"
 LOGFILE="/var/log/$(basename "${0}").log"
 LOCKFILE="/var/lock/$(basename "${0}").lock"
 DEPENDENCIES="nsca-client dnsutils curl ppp git"
@@ -496,6 +492,10 @@ if [ "${1}" = "setup" ]; then
     doExit
 fi
 
+# get config file
+if [ ! -z "${1}" ]; then
+    CONFIGFILE="${1}"
+fi
 doReadConfig
 
 [ "${KEEPLOG}" -eq 0 ] && rm "${LOGFILE}" 2> /dev/null
