@@ -119,7 +119,7 @@ doSetup()
 
     # install dependencies
     apt-get update
-    apt-get install -y "${DEPENDENCIES}"
+    apt-get install -y ${DEPENDENCIES}
 
     # prepare cronjob
     echo "@reboot root ${ZYPATH}/${SCRIPTNAME} > /dev/null" > "${cronjob}"
