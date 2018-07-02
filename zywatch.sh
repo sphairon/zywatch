@@ -151,6 +151,7 @@ doLogin()
     sessionid=$(cat ${cookie} | grep SESSION_ID | awk '{print $7}')
     start=$(date +%s)
     LOGIN=$(curl -b ${cookie} -s -i -d "tid=&sid=${sessionid}&controller=SasLogin&action=login&id=0&LoginName=${DUTUSER}&LoginPass=${DUTPASS}" http://${DEFAULT}/webng.cgi)
+    DEVICEINFO=$(curl -b ${cookie} -s -i -d "tid=&sid=${sessionid}&controller=Diagnostic&action=deviceInfoExt" http://${DEFAULT}/webng.cgi | grep -A 9 "Monitoring status page")
     fin=$(date +%s)
     logintime=$((fin - start))
 
@@ -368,7 +369,8 @@ doVoIP()
     if [ "${USEVOIP}" -eq 0 ]; then
         doSend "${MON_SIPACC}" 0 "No SIP Accounts used"
     fi
-    telstatus=$(echo "${LOGIN}" | egrep '(Registriert|Registered)' | wc -l)
+    telstatus=$(echo "$DEVICEINFO" |grep SIP |cut -d : -f 2 |awk '{print $1}')
+    [ -z $telstatus ] && telstatus=$(echo "${LOGIN}" | egrep '(Registriert|Registered)' | wc -l)
     if [ "${telstatus}" -gt 0 ]; then
         doOut 0 "Telephony Status is OK"
         doSend "${MON_SIPACC}" 0 "SIP Accounts are registered|accounts=${telstatus};1;10;0;10"
@@ -392,12 +394,13 @@ checkArea()
 # check data rates
 checkDataRates()
 {
-    local downstream=0
-    local upstream=0
-
     # get downstream/upstream rate
-    downstream=$(echo "${LOGIN}" | grep -A1 '[dD]ownstream' | grep -Po '(<div>)\K[^<]*')
-    upstream=$(echo "${LOGIN}" | grep -A1 '[uU]pstream' | grep -Po '(<div>)\K[^<]*')
+    downstream=$(echo "$DEVICEINFO" |grep Downstream |cut -d : -f 2 |awk '{print $1}')
+    upstream=$(echo "$DEVICEINFO" |grep Upstream |cut -d : -f 2 |awk '{print $1}')
+    [ -z $downstream ] && downstream=$(echo "${LOGIN}" | grep -A1 '[dD]ownstream' | grep -Po '(<div>)\K[^<]*')
+    [ -z $upstream ] && upstream=$(echo "${LOGIN}" | grep -A1 '[uU]pstream' | grep -Po '(<div>)\K[^<]*')
+    [ -z $downstream ] && downstream=0
+    [ -z $upstream ] && upstream=0
 
     # downstream
     downstream=${downstream//&\#160;/ }
@@ -456,9 +459,10 @@ doSystem()
 {
     local systemstatus=""
     local software=""
-
-    systemstatus=$(echo "${LOGIN}" | grep "cStatusOk" | grep "System")
-    software=$(echo "${LOGIN}" | grep "device_version" | cut -d":" -f2 | cut -d"<" -f1)
+    systemstatus=$(echo "$DEVICEINFO" |grep System |cut -d : -f 2 |awk '{print $1}')
+    software=$(echo "$DEVICEINFO" |grep Firmware |cut -d : -f 2 |awk '{print $1}')
+    [ -z $systemstatus ] && systemstatus=$(echo "${LOGIN}" | grep "cStatusOk" | grep "System")
+    [ -z $software ] && software=$(echo "${LOGIN}" | grep "device_version" | cut -d":" -f2 | cut -d"<" -f1)
     doSend "${MON_SWVER}" 0 "${software}"
 
     if [ ${#systemstatus} -eq 0 ]; then
