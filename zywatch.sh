@@ -60,6 +60,8 @@ DEPENDENCIES="nsca-client dnsutils curl ppp git"
 IP="0.0.0.0"
 IP6="::0"
 GUIACCESS=0
+BEGUI=0
+cookie="/tmp/cookies.txt"
 
 # helper function to read configuration
 doReadConfig()
@@ -135,19 +137,98 @@ doSetup()
     sync
 }
 
-# helper function to login to GUI
-doLogin()
+# helper function to login to BEGUI
+doLoginBE()
+{
+    out=$(mktemp)
+    touch ${cookie}
+    curl -c ${cookie} -s http://${DEFAULT} > ${out}
+
+    AdminSalt=`cat ${out}|cut -d \= -f 9 |cut -d \< -f 3 |cut -d \> -f 2 |cut -d \$ -f 3`
+    RandomSalt=`cat ${out} |cut -d \= -f 9 |cut -d \< -f 5 |cut -d \> -f 2 |cut -d \$ -f 3`
+    SID=`cat ${out}|cut -d \= -f 10 |cut -d \> -f 2 |cut -d \< -f 1`
+    CSRF=`cat ${out} |cut -d \= -f 11 |cut -d \> -f 2 |cut -d \< -f 1`
+    LoginPath=`cat ${out} |cut -d \= -f 6 |cut -d \/ -f 3`
+
+    Hash=`openssl passwd -6 -salt ${AdminSalt} ${DUTPASS}`
+    LoginHash=`openssl passwd -6 -salt ${RandomSalt} ${Hash}`
+    start=$(date +%s)
+
+    # login
+    curl -b ${cookie} -i -s \
+      -H "Origin: http://${DEFAULT}/" \
+      -H "Upgrade-Insecure-Requests: 1" \
+      --referer http://${DEFAULT}/ \
+      --data-urlencode sessionLoginName=${DUTUSER} \
+      --data-urlencode sessionLoginHash=${LoginHash} \
+      -d savedTarget=%2Fesi%2F${LoginPath}%2Fesi.cgi%3Fpage%3Dindex.xml \
+      -d page=index.xml \
+      -d sid=${SID} \
+      http://${DEFAULT}/proclog.htm?X-Csrf-Token="${CSRF}" > ${out}
+    fin=$(date +%s)
+    logintime=$((fin - start))
+
+    login_ok=$(cat ${out} | grep "userIdent")
+    if [ -z "${login_ok}" ]; then
+        doOut 1 "GUI login FAILED with username ${DUTUSER}"
+        doSend "${MON_GUIACCESS}" 2 "GUI login FAILED with username ${DUTUSER}"
+        GUIACCESS=0
+        return
+    else
+        GUIACCESS=1
+    fi
+
+    # get data
+    curl -b ${cookie} -i -s \
+      -H "X-Csrf-Token: ${CSRF}" \
+      -H "bez-session-id: ${SID}" \
+      --referer "http://${DEFAULT}/esi/d3d6aad901b0f16f/esi.cgi?page=lp-network.xml" \
+      "http://${DEFAULT}/esi/d3d6aad901b0f16f/webng.cgi?controller=Digibox&action=status&ajaxrequest=1" > ${out}
+    FirmwareVersion=$(cat ${out} |grep firmwareVersion |cut -d : -f5 |cut -d \" -f 2)
+    DSLUpstream=$(cat ${out} |grep firmwareVersion |cut -d : -f13 |cut -d \" -f 2 |awk '{print $1}')
+    DSLDownstream=$(cat ${out} |grep firmwareVersion |cut -d : -f14 |cut -d \" -f 2 |awk '{print $1}')
+
+    curl -b ${cookie} -i -s \
+      -H "X-Csrf-Token: ${CSRF}" \
+      -H "bez-session-id: ${SID}" \
+      --referer "http://${DEFAULT}/esi/${LoginPath}/esi.cgi?page=lp-telephony.xml" \
+      "http://${DEFAULT}/esi/${LoginPath}/esi.cgi?page=lp-telephony.xml&userIdent=${SID}&SharedTmpSid=0815${SID}&replace=inline&cacheAvoider=1621256225436" > ${out}
+    SIPStatus=$(cat ${out} |grep statusinfo |grep wz_pbx_trunks |cut -d \" -f 2)
+
+    curl -b ${cookie} -i -s \
+      -H "X-Csrf-Token: ${CSRF}" \
+      -H "bez-session-id: ${SID}" \
+      --referer "http://${DEFAULT}/esi/d3d6aad901b0f16f/esi.cgi?controller=Digibox&action=gpon" \
+      "http://${DEFAULT}/zyxel/webng.cgi?controller=Digibox&action=gpon&&replace=inline&cacheAvoider=1621257152974&SharedTmpSid=0815${SID}" > ${out}
+    SystemTemp=$(cat ${out} |grep Temperatur -A 3 |grep td |awk '{print $1}' |cut -d \> -f 2)
+
+    # logout
+    curl -b ${cookie} -i -s \
+      -H "X-Csrf-Token: ${CSRF}" \
+      -H "bez-session-id: ${SID}" \
+      --referer "http://${DEFAULT}/esi/${LoginPath}/esi.cgi?controller=Digibox&action=indexSystem&id" \
+      "http://${DEFAULT}/esi/${LoginPath}/esi.cgi?sessionLogout=1&userIdent=${SID}&page=index.xml" > /dev/null
+
+    rm ${cookie}
+    rm ${out}
+
+    if [ "${logintime}" -gt 30 ];then
+        doSend "${MON_GUIACCESS}" 2 "CRITICAL: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
+        return
+    fi
+    if [ "${logintime}" -gt 20 ];then
+        doSend "${MON_GUIACCESS}" 1 "WARNING: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
+        return
+    fi
+    doSend "${MON_GUIACCESS}" 0 "OK: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
+}
+
+doLoginZyx()
 {
     local sessionid=""
     local login_ok=""
     local start=""
     local fin=""
-    local cookie="/tmp/cookies.txt"
-
-    rm ${cookie} 2> /dev/null
-
-    # login, grab start page, count seconds until startup page is delivered
-    LOGIN=$(curl -s -i http://${DEFAULT}/webng.cgi -c ${cookie})
     sessionid=$(cat ${cookie} | grep SESSION_ID | awk '{print $7}')
     start=$(date +%s)
     LOGIN=$(curl -b ${cookie} -s -i -d "tid=&sid=${sessionid}&controller=SasLogin&action=login&id=0&LoginName=${DUTUSER}&LoginPass=${DUTPASS}" http://${DEFAULT}/webng.cgi)
@@ -177,6 +258,23 @@ doLogin()
     fi
     doSend "${MON_GUIACCESS}" 0 "OK: GUI response in ${logintime} seconds |timer=${logintime};10;30;0;120"
 }
+
+# helper function to login to GUI
+doLogin()
+{
+    rm ${cookie} 2> /dev/null
+
+    # login, grab start page, count seconds until startup page is delivered
+    LOGIN=$(curl -s -i http://${DEFAULT} -c ${cookie})
+    if [ "$(echo $LOGIN |grep "Digitalisierungsbox Premium 2")" != "" ];then
+        BEGUI=1
+        doLoginBE
+    else
+        BEGUI=0
+        doLoginZyx
+    fi
+}
+
 
 # helper function to make a outgoing analogue call
 doCall()
@@ -380,6 +478,23 @@ doVoIP()
     fi
 }
 
+# check if SIP accounts are registered
+doVoIPBE()
+{
+    local telstatus=""
+
+    if [ "${USEVOIP}" -eq 0 ]; then
+        doSend "${MON_SIPACC}" 0 "No SIP Accounts used"
+    fi
+    if [ "${SIPStatus}" = "ok" ]; then
+        doOut 0 "Telephony Status is OK"
+        doSend "${MON_SIPACC}" 0 "SIP Accounts are registered"
+    else
+        doOut 1 "Telephony Status is FAILED"
+        doSend "${MON_SIPACC}" 2 "SIP Accounts are NOT registered"
+    fi
+}
+
 # check detected area
 checkArea()
 {
@@ -394,17 +509,27 @@ checkArea()
 # check data rates
 checkDataRates()
 {
-    # get downstream/upstream rate
-    downstream=$(echo "$DEVICEINFO" |grep Downstream |cut -d : -f 2 |awk '{print $1}')
-    upstream=$(echo "$DEVICEINFO" |grep Upstream |cut -d : -f 2 |awk '{print $1}')
-    [ -z $downstream ] && downstream=$(echo "${LOGIN}" | grep -A1 '[dD]ownstream' | grep -Po '(<div>)\K[^<]*')
-    [ -z $upstream ] && upstream=$(echo "${LOGIN}" | grep -A1 '[uU]pstream' | grep -Po '(<div>)\K[^<]*')
-    [ -z $downstream ] && downstream=0
-    [ -z $upstream ] && upstream=0
+    if [ "${BEGUI}" -eq 0 ];then
+        # get downstream/upstream rate
+        downstream=$(echo "$DEVICEINFO" |grep Downstream |cut -d : -f 2 |awk '{print $1}')
+        upstream=$(echo "$DEVICEINFO" |grep Upstream |cut -d : -f 2 |awk '{print $1}')
+        [ -z $downstream ] && downstream=$(echo "${LOGIN}" | grep -A1 '[dD]ownstream' | grep -Po '(<div>)\K[^<]*')
+        [ -z $upstream ] && upstream=$(echo "${LOGIN}" | grep -A1 '[uU]pstream' | grep -Po '(<div>)\K[^<]*')
+        [ -z $downstream ] && downstream=0
+        [ -z $upstream ] && upstream=0
 
-    # downstream
-    downstream=${downstream//&\#160;/ }
-    downstream_value=$(echo "${downstream}" | awk '{print $1}')
+        # downstream
+        downstream=${downstream//&\#160;/ }
+        downstream_value=$(echo "${downstream}" | awk '{print $1}')
+        # upstream
+        upstream=${upstream//&\#160;/ }
+        upstream_value=$(echo "${upstream}" | awk '{print $1}')
+    else
+        downstream=$DSLDownstream
+        upstream=$DSLUpstream
+        downstream_value=$DSLDownstream
+        upstream_value=$DSLUpstream
+    fi
 
     if [ -z "${DATARATE_DOWNSTREAM}" ]; then
         # set fix values to prevent wrong warning messages in monitoring
@@ -420,10 +545,6 @@ checkDataRates()
     fi
 
     graph_downstream_values="${warning_datarate_downstream};${critical_datarate_downstream};${min_datarate_downstream};${max_datarate_downstream}"
-
-    # upstream
-    upstream=${upstream//&\#160;/ }
-    upstream_value=$(echo "${upstream}" | awk '{print $1}')
 
     if [ -z "${DATARATE_UPSTREAM}" ]; then
         # set fix values to prevent wrong warning messages in monitoring
@@ -472,6 +593,13 @@ doSystem()
         doOut 0 "System Status is OK"
         doSend "${MON_SYSSTAT}" 0 "No failed services"
     fi
+}
+
+# check Software version and if overall system status is OK
+doSystemBE()
+{
+    doSend "${MON_SWVER}" 0 "${FirmwareVersion}"
+    doSend "${MON_SYSSTAT}" 0 "GUI is alive|SFPTemperature=${SystemTemp};10;100;70;80"
 }
 
 # script already running?
@@ -527,10 +655,15 @@ doDNS
 doTestV6
 doIPv4
 doLogin
-[ "${GUIACCESS}" -eq 1 ] && doSystem
-[ "${GUIACCESS}" -eq 1 ] && checkArea
 [ "${GUIACCESS}" -eq 1 ] && checkDataRates
-[ "${GUIACCESS}" -eq 1 ] && doVoIP
+[ "${GUIACCESS}" -eq 1 -a "${BEGUI}" -eq 0 ] && doSystem
+[ "${GUIACCESS}" -eq 1 -a "${BEGUI}" -eq 0 ] && checkArea
+[ "${GUIACCESS}" -eq 1 -a "${BEGUI}" -eq 0 ] && doVoIP
+
+[ "${GUIACCESS}" -eq 1 -a "${BEGUI}" -eq 1 ] && doVoIPBE
+[ "${GUIACCESS}" -eq 1 -a "${BEGUI}" -eq 1 ] && doSystemBE
+
+
 doDynDNS
 doTelephony
 doExit
