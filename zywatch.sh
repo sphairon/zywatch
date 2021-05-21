@@ -599,7 +599,15 @@ doSystem()
 doSystemBE()
 {
     doSend "${MON_SWVER}" 0 "${FirmwareVersion}"
-    doSend "${MON_SYSSTAT}" 0 "GUI is alive|SFPTemperature=${SystemTemp};10;100;70;80"
+    if [ "${SystemTemp}" != "" ];then
+	    if [ $(echo ${SystemTemp} |cut -d . -f 1) -lt 70 ];then
+            doSend "${MON_SYSSTAT}" 0 "GUI is alive|SFPTemperature=${SystemTemp};70;100;40;100"
+        else
+            doSend "${MON_SYSSTAT}" 1 "SFP temperature high (${SystemTemp}) |SFPTemperature=${SystemTemp};70;100;40;100"
+        fi
+    else
+        doSend "${MON_SYSSTAT}" 0 "GUI is alive"
+    fi
 }
 
 # script already running?
