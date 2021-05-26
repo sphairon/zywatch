@@ -370,7 +370,12 @@ doVoIP()
         doSend "${MON_SIPACC}" 0 "No SIP Accounts used"
     fi
     telstatus=$(echo "$DEVICEINFO" |grep SIP |cut -d : -f 2 |awk '{print $1}')
-    [ -z $telstatus ] && telstatus=$(echo "${LOGIN}" | egrep '(Registriert|Registered)' | wc -l)
+    if [ -z $telstatus ];then
+        sipclients=$(echo "${LOGIN}" | egrep -B 1 '(Registriert|Registered)' |grep IP | wc -l)
+        telstatus=$(echo "${LOGIN}" | egrep '(Registriert|Registered)' | wc -l)
+        telstatus=$(expr $telstatus - $sipclients)
+    fi
+
     if [ "${telstatus}" -gt 0 ]; then
         doOut 0 "Telephony Status is OK"
         doSend "${MON_SIPACC}" 0 "SIP Accounts are registered|accounts=${telstatus};1;10;0;10"
