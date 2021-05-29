@@ -266,7 +266,7 @@ doLogin()
 
     # login, grab start page, count seconds until startup page is delivered
     LOGIN=$(curl -s -i http://${DEFAULT} -c ${cookie})
-    if [ "$(echo $LOGIN |grep "Digitalisierungsbox Premium 2")" != "" ];then
+    if [ "$(echo $LOGIN |grep "randomPassword" | grep "randomSalt" )" != "" ];then
         BEGUI=1
         doLoginBE
     else
