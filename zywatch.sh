@@ -185,8 +185,8 @@ doLoginBE()
       --referer "http://${DEFAULT}/esi/d3d6aad901b0f16f/esi.cgi?page=lp-network.xml" \
       "http://${DEFAULT}/esi/d3d6aad901b0f16f/webng.cgi?controller=Digibox&action=status&ajaxrequest=1" > ${out}
     FirmwareVersion=$(cat ${out} |grep firmwareVersion |cut -d : -f5 |cut -d \" -f 2)
-    DSLUpstream=$(cat ${out} |grep firmwareVersion |cut -d : -f13 |cut -d \" -f 2 |awk '{print $1}')
-    DSLDownstream=$(cat ${out} |grep firmwareVersion |cut -d : -f14 |cut -d \" -f 2 |awk '{print $1}')
+    DSLUpstream=$(cat ${out} |grep firmwareVersion |cut -d : -f14 |cut -d \" -f 2 |awk '{print $1}')
+    DSLDownstream=$(cat ${out} |grep firmwareVersion |cut -d : -f13 |cut -d \" -f 2 |awk '{print $1}')
 
     curl -b ${cookie} -i -s \
       -H "X-Csrf-Token: ${CSRF}" \
