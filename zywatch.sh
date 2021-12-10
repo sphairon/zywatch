@@ -150,8 +150,8 @@ doLoginBE()
     CSRF=`cat ${out} |cut -d \= -f 11 |cut -d \> -f 2 |cut -d \< -f 1`
     LoginPath=`cat ${out} |cut -d \= -f 6 |cut -d \/ -f 3`
 
-    Hash=`openssl passwd -6 -salt ${AdminSalt} ${DUTPASS}`
-    LoginHash=`openssl passwd -6 -salt ${RandomSalt} ${Hash}`
+    Hash=`/opt/openssl passwd -6 -salt ${AdminSalt} ${DUTPASS}`
+    LoginHash=`/opt/openssl passwd -6 -salt ${RandomSalt} ${Hash}`
     start=$(date +%s)
 
     # login
