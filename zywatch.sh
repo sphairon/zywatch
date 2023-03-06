@@ -194,7 +194,7 @@ doLoginBE()
       -H "bez-session-id: ${SID}" \
       --referer "http://${DEFAULT}/esi/${LoginPath}/esi.cgi?page=lp-telephony.xml" \
       "http://${DEFAULT}/esi/${LoginPath}/esi.cgi?page=lp-telephony.xml&userIdent=${SID}&SharedTmpSid=0815${SID}&replace=inline&cacheAvoider=1621256225436" > ${out}
-    SIPStatus=$(cat ${out} |grep statusinfo | awk 'NR==1' |cut -d \" -f 2)
+    SIPStatus=$(cat ${out} |grep statusinfo | awk 'NR==2' |cut -d \" -f 2)
 
     curl -b ${cookie} -i -s \
       -H "X-Csrf-Token: ${CSRF}" \
