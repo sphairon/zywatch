@@ -446,7 +446,11 @@ doDynDNS()
         DYNDNS_MONITORING="MON_DYNDNS${i}"
 
         if [ ! -z "${!DYNDNS_CONFIG}" ]; then
-            dyndns_ip=$(nslookup "${!DYNDNS_CONFIG}" | grep "Address" |awk 'NR==2{print $2}')
+            if [ "$(which dig)" != "" ];then
+                dyndns_ip=$(dig +short ${!DYNDNS_CONFIG})
+            else
+                dyndns_ip=$(nslookup ${!DYNDNS_CONFIG} | awk 'NR==6 {print $2}')
+            fi
             if [ "${dyndns_ip}" = "${IP}" ]; then
                 doOut 0 "DynDNS Account ${i} works as expected"
                 doSend "${!DYNDNS_MONITORING}" 0 "${dyndns_ip} matches ${!DYNDNS_CONFIG}"
