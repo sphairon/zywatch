@@ -447,9 +447,9 @@ doDynDNS()
 
         if [ ! -z "${!DYNDNS_CONFIG}" ]; then
             if [ "$(which dig)" != "" ];then
-                dyndns_ip=$(dig +short ${!DYNDNS_CONFIG})
+                dyndns_ip=$(dig +short ${!DYNDNS_CONFIG} @1.1.1.1)
             else
-                dyndns_ip=$(nslookup ${!DYNDNS_CONFIG} | awk 'NR==6 {print $2}')
+                dyndns_ip=$(nslookup ${!DYNDNS_CONFIG} 1.1.1.1 | awk 'NR==6 {print $2}')
             fi
             if [ "${dyndns_ip}" = "${IP}" ]; then
                 doOut 0 "DynDNS Account ${i} works as expected"
